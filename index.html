@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geometry Modifiers Visualizer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        h3 {
+            margin-top: 0;
+            color: #1e293b;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        .canvas-area {
+            width: 100%;
+            height: 300px;
+            background: #f1f5f9;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+        /* Base Shape */
+        .base-shape {
+            fill: #cbd5e1;
+            stroke: #94a3b8;
+            stroke-width: 2;
+            transition: all 0.5s ease;
+        }
+        /* Modifiers */
+        .modifier-shape {
+            fill: none;
+            stroke-width: 3;
+            opacity: 0;
+            stroke-dasharray: 2000;
+            stroke-dashoffset: 2000;
+            transition: opacity 0.3s, stroke-dashoffset 1s ease-in-out;
+        }
+        .active-mod {
+            opacity: 1;
+            stroke-dashoffset: 0;
+        }
+        
+        #buffer-shape {
+            stroke: #3b82f6;
+            stroke-width: 40;
+            stroke-linejoin: round;
+            fill: rgba(59, 130, 246, 0.2);
+        }
+        #simplify-shape {
+            stroke: #ef4444;
+            stroke-width: 4;
+            fill: rgba(239, 68, 68, 0.2);
+        }
+        #envelope-shape {
+            stroke: #10b981;
+            stroke-width: 3;
+            stroke-dasharray: 10, 5;
+            fill: rgba(16, 185, 129, 0.1);
+        }
+        #hull-shape {
+            stroke: #f59e0b;
+            stroke-width: 3;
+            fill: rgba(245, 158, 11, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-family: monospace;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+            background: #e2e8f0;
+            color: #475569;
+        }
+        button:hover { background: #cbd5e1; }
+        button.active { background: #1e293b; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        
+        .explanation {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 4px;
+            color: #92400e;
+            font-size: 0.95rem;
+            text-align: center;
+            line-height: 1.5;
+            min-height: 60px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3>Geometry Modifiers Visualizer</h3>
+    
+    <div class="canvas-area">
+        <svg viewBox="0 0 500 300">
+            <rect id="envelope-shape" class="modifier-shape" x="80" y="50" width="350" height="210"></rect>
+            
+            <polygon id="base-shape" class="base-shape" 
+                     points="150,220 180,160 120,130 190,110 160,50 250,90 320,60 290,130 430,100 370,180 410,260 300,220 260,250 220,190 100,260">
+            </polygon>
+
+            <polygon id="buffer-shape" class="modifier-shape" 
+                     points="150,220 180,160 120,130 190,110 160,50 250,90 320,60 290,130 430,100 370,180 410,260 300,220 260,250 220,190 100,260">
+            </polygon>
+
+            <polygon id="simplify-shape" class="modifier-shape" 
+                     points="150,220 120,130 160,50 320,60 430,100 410,260 260,250 100,260">
+            </polygon>
+
+            <polygon id="hull-shape" class="modifier-shape" 
+                     points="100,260 120,130 160,50 320,60 430,100 410,260 260,250">
+            </polygon>
+        </svg>
+    </div>
+
+    <div class="controls">
+        <button id="btn-orig" class="active" onclick="triggerMod('orig')">Original Shape</button>
+        <button id="btn-buff" onclick="triggerMod('buff')">.buffer()</button>
+        <button id="btn-simp" onclick="triggerMod('simp')">.simplify()</button>
+        <button id="btn-env" onclick="triggerMod('env')">.envelope</button>
+        <button id="btn-hull" onclick="triggerMod('hull')">.convex_hull</button>
+    </div>
+    
+    <div class="explanation" id="explanation">
+        <b>Original Shape:</b> A complex, highly jagged geometry with many vertices. Click the modifiers above to see how GeoPandas can derive new shapes from it.
+    </div>
+</div>
+
+<script>
+    function triggerMod(type) {
+        // Reset all buttons
+        document.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+        
+        // Reset all modifier shapes
+        document.querySelectorAll('.modifier-shape').forEach(shape => shape.classList.remove('active-mod'));
+        
+        // Highlight active button
+        document.getElementById(`btn-${type}`).classList.add('active');
+        
+        const exp = document.getElementById('explanation');
+        
+        if (type === 'orig') {
+            exp.innerHTML = "<b>Original Shape:</b> A complex, highly jagged geometry with many vertices. Click the modifiers above to see how GeoPandas can derive new shapes from it.";
+        } else if (type === 'buff') {
+            document.getElementById('buffer-shape').classList.add('active-mod');
+            exp.innerHTML = "<span style='color:#2563eb'><b>.buffer()</b></span> expands the shape uniformly in all directions by a specified distance. Used to create proximity zones (e.g., '10km from the border').";
+        } else if (type === 'simp') {
+            document.getElementById('simplify-shape').classList.add('active-mod');
+            exp.innerHTML = "<span style='color:#dc2626'><b>.simplify()</b></span> removes unnecessary vertices while keeping the general shape. Crucial for reducing file sizes and speeding up web maps.";
+        } else if (type === 'env') {
+            document.getElementById('envelope-shape').classList.add('active-mod');
+            exp.innerHTML = "<span style='color:#059669'><b>.envelope</b></span> draws the tightest possible axis-aligned bounding box. It is the fastest way to check if two shapes are anywhere near each other before doing heavy math.";
+        } else if (type === 'hull') {
+            document.getElementById('hull-shape').classList.add('active-mod');
+            exp.innerHTML = "<span style='color:#d97706'><b>.convex_hull</b></span> snaps a tight 'rubber band' around the outermost extremities of the shape. Perfect for defining precise territories or catchment areas.";
+        }
+    }
+</script>
+
+</body>
+</html>
